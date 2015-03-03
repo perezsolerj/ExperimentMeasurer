@@ -3,11 +3,12 @@
 #include <geometry_msgs/WrenchStamped.h>
 #include <tf/transform_broadcaster.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <nav_msgs/Odometry.h>
 
 
 #define POSETOPIC "g500/pose"
 #define FORCETOPIC "g500/ForceSensor"
-#define THRUSTERSTOPIC "g500/thrusters_input"
+#define THRUSTERSTOPIC "/dataNavigator"
 
 #define WAYPOINT1 (5,15,8)
 #define WAYPOINT2 (15,30,10)
@@ -24,14 +25,14 @@ class Measurer{
     int collisions, orders;
     int current_waypoint;
     std::vector<tf::Vector3> waypoints;
-    std::vector<float> last_thrusters;
+    double last_thrusters[3];
 
     int started;
     
     Measurer();
     void callbackPose(const geometry_msgs::Pose& msg);
     void callbackForce(const geometry_msgs::WrenchStamped& msg);
-    void callbackThrusters(const std_msgs::Float64MultiArray& msg);
+    void callbackThrusters(const nav_msgs::Odometry& msg);
 };
 
 void Measurer::callbackPose(const geometry_msgs::Pose& msg){
@@ -68,28 +69,22 @@ void Measurer::callbackForce(const geometry_msgs::WrenchStamped& msg){
   //std::cout<<collisions<<"  "<<msg.wrench.force.x<<"  "<<msg.wrench.force.y<<"  "<<msg.wrench.force.z<<"  "<<msg.wrench.torque.x<<"  "<<msg.wrench.torque.y<<"  "<<msg.wrench.torque.z<<std::endl;
 }
 
-void Measurer::callbackThrusters(const std_msgs::Float64MultiArray& msg){
-  int neworder=0;
-
+void Measurer::callbackThrusters(const nav_msgs::Odometry& msg){
   if(started){
-    for(int i=0; i< msg.data.size();i++){
-      if(msg.data[i]*last_thrusters[i]<=0 and (msg.data[i]!=0 or last_thrusters[i]!=0))
-	neworder++;
-    }
-    if(neworder)
-      orders++;
+    if( (msg.twist.twist.linear.x*last_thrusters[0] and (msg.twist.twist.linear.x!=0 or last_thrusters[0])) or
+        (msg.twist.twist.linear.y*last_thrusters[1] and (msg.twist.twist.linear.y!=0 or last_thrusters[1])) or
+        (msg.twist.twist.linear.z*last_thrusters[2] and (msg.twist.twist.linear.z!=0 or last_thrusters[2])) )
+
+	orders++;
   }
   else
-     for(int i=0; i< msg.data.size();i++){
-      if(msg.data[i]!=0){
+    if(msg.twist.twist.linear.x!=0 or msg.twist.twist.linear.y!=0 or msg.twist.twist.linear.z!=0 ){
 	started=1;
         std::cout<<"Started measuring"<<std::endl;
-      }
     } 
-  last_thrusters.clear();
-  for(int i=0; i< msg.data.size();i++){
-    last_thrusters.push_back(msg.data[i]);
-  }
+  last_thrusters[0]=msg.twist.twist.linear.x;
+  last_thrusters[1]=msg.twist.twist.linear.y;
+  last_thrusters[2]=msg.twist.twist.linear.z;
 
   //std::cout<<"orders: "<<orders<<std::endl;
 }
