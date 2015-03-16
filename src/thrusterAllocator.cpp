@@ -73,11 +73,11 @@ int main(int argc, char **argv){
     //std::cout<<twist.linear[0]-dvl.linear[0]<<" "<<twist.linear[1]-dvl.linear[1]<<" "<<twist.linear[2]-dvl.linear[2]<<std::endl;
     //std::cout<<"DESIRED: "<<twist.linear[2]<<" REAL:"<<dvl.linear[2]<<" APLICADA: "<<twist.linear[2]-dvl.linear[2]<<std::endl;
 
-    thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5+twist.angular[2];//-1.142857143*twist.linear[0];
-    thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5-twist.angular[2];//-1.142857143*twist.linear[0];
-    thrust_req[2]=-(twist.linear[2]-dvl.linear[2])*5; //arriba y abajo
+    thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5 - twist.angular[2];//-1.142857143*twist.linear[0];
+    thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5 + twist.angular[2];//-1.142857143*twist.linear[0];
+    thrust_req[2]=-(twist.linear[2]-dvl.linear[2])*5; //up y down
     thrust_req[3]=-(twist.linear[2]-dvl.linear[2])*5;
-    thrust_req[4]=(twist.linear[1]+dvl.linear[1])*6;//1.6*twist.linear[1];
+    thrust_req[4]=(twist.linear[1]+dvl.linear[1])*6; //1.6*twist.linear[1];
 
     //std::cout<<thrust_req[0]<<" "<<thrust_req[1]<<" "<<thrust_req[2]<<" "<<thrust_req[3]<<" "<<thrust_req[4]<<std::endl;
 
