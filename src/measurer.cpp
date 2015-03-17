@@ -47,7 +47,7 @@ void Measurer::callbackPose(const geometry_msgs::Pose& msg){
  last_position[2]=msg.position.z;
 
  if(current_waypoint< waypoints.size() and waypoints[current_waypoint].distance(tf::Vector3(msg.position.x,msg.position.y,msg.position.z))<2.0){
-   std::cout<<"WAYPOINT PASADO"<<std::endl;
+   std::cout<<"WAYPOINT ACHIEVED"<<std::endl;
    std::cout<<"Distance: "<<distance<<" Ncollisions: "<<collisions<<" Time: "<<(ros::Time::now()-initial_time).toSec()<<" Orders: "<<orders<<std::endl;
    current_waypoint++;
  }
