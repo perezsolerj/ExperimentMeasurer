@@ -71,9 +71,9 @@ void Measurer::callbackForce(const geometry_msgs::WrenchStamped& msg){
 
 void Measurer::callbackThrusters(const nav_msgs::Odometry& msg){
   if(started){
-    if( (msg.twist.twist.linear.x*last_thrusters[0] and (msg.twist.twist.linear.x!=0 or last_thrusters[0])) or
-        (msg.twist.twist.linear.y*last_thrusters[1] and (msg.twist.twist.linear.y!=0 or last_thrusters[1])) or
-        (msg.twist.twist.linear.z*last_thrusters[2] and (msg.twist.twist.linear.z!=0 or last_thrusters[2])) )
+    if( (msg.twist.twist.linear.x*last_thrusters[0]<=0 and (msg.twist.twist.linear.x!=0 or last_thrusters[0]!=0)) or
+        (msg.twist.twist.linear.y*last_thrusters[1]<=0 and (msg.twist.twist.linear.y!=0 or last_thrusters[1]!=0)) or
+        (msg.twist.twist.linear.z*last_thrusters[2]<=0 and (msg.twist.twist.linear.z!=0 or last_thrusters[2]!=0)) )
 
 	orders++;
   }
