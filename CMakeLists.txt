@@ -103,6 +103,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 ## Declare a cpp executable
  add_executable(measurer src/measurer.cpp)
  add_executable(thrusterAllocator src/thrusterAllocator.cpp)
+ add_executable(navigatorPIcontroller src/navigatorPIcontroller.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -114,6 +115,10 @@ include_directories(include ${catkin_INCLUDE_DIRS})
  )
 
  target_link_libraries(thrusterAllocator
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(navigatorPIcontroller
    ${catkin_LIBRARIES}
  )
 #############
@@ -131,7 +136,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 # )
 
 ## Mark executables and/or libraries for installation
- install(TARGETS measurer thrusterAllocator
+ install(TARGETS measurer thrusterAllocator navigatorPIcontroller
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
