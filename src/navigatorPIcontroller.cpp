@@ -11,6 +11,7 @@ class PoseCallback{
     double pos[3];
     double quat[4];
  
+	//Indicates the robot desired position
     void callback(const geometry_msgs::PoseStamped& msg) {
       pos[0]=msg.pose.position.x;
       pos[1]=msg.pose.position.y;
@@ -36,6 +37,11 @@ class BenchmarkInfoCallback{
 	newIteration=1;
     }
 };
+
+class NavPiController {
+	
+}
+
 
 int main(int argc, char **argv){
   std::string pose_topic, velocity_topic, benchinfo_topic;

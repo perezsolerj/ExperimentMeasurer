@@ -25,7 +25,7 @@ class Measurer{
     int collisions, orders;
     int current_waypoint;
     std::vector<tf::Vector3> waypoints;
-    double last_thrusters[3];
+    double last_thrusters[4];
 
     int started;
     
@@ -70,23 +70,25 @@ void Measurer::callbackForce(const geometry_msgs::WrenchStamped& msg){
 }
 
 void Measurer::callbackThrusters(const nav_msgs::Odometry& msg){
-  if(started){
-    if( (msg.twist.twist.linear.x*last_thrusters[0]<=0 and (msg.twist.twist.linear.x!=0 or last_thrusters[0]!=0)) or
+  if(started)
+  {
+    /*if( (msg.twist.twist.linear.x*last_thrusters[0]<=0 and (msg.twist.twist.linear.x!=0 or last_thrusters[0]!=0)) or
         (msg.twist.twist.linear.y*last_thrusters[1]<=0 and (msg.twist.twist.linear.y!=0 or last_thrusters[1]!=0)) or
-        (msg.twist.twist.linear.z*last_thrusters[2]<=0 and (msg.twist.twist.linear.z!=0 or last_thrusters[2]!=0)) )
-
-	orders++;
+        (msg.twist.twist.linear.z*last_thrusters[2]<=0 and (msg.twist.twist.linear.z!=0 or last_thrusters[2]!=0)) )*/
+	if(!(last_thrusters[0] == msg.twist.twist.linear.x && last_thrusters[1] == msg.twist.twist.linear.y && \
+		last_thrusters[2] == msg.twist.twist.linear.z && last_thrusters[3] == msg.twist.twist.angular.z))
+		orders++;
   }
   else
-    if(msg.twist.twist.linear.x!=0 or msg.twist.twist.linear.y!=0 or msg.twist.twist.linear.z!=0 ){
-	started=1;
+    if(msg.twist.twist.linear.x!=0 or msg.twist.twist.linear.y!=0 or msg.twist.twist.linear.z!=0 or msg.twist.twist.angular.z!=0 )
+    {
+		started=1;
         std::cout<<"Started measuring"<<std::endl;
     } 
   last_thrusters[0]=msg.twist.twist.linear.x;
   last_thrusters[1]=msg.twist.twist.linear.y;
   last_thrusters[2]=msg.twist.twist.linear.z;
-
-  //std::cout<<"orders: "<<orders<<std::endl;
+  last_thrusters[3]=msg.twist.twist.angular.z;
 }
 
 Measurer::Measurer(){

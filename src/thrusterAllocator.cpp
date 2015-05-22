@@ -64,8 +64,13 @@ int main(int argc, char **argv){
   ros::Subscriber sub_dvl = nh.subscribe(dvl_topic, 1000, &DVLCallback::callback,&dvl);
   ros::Publisher pub=nh.advertise<std_msgs::Float64MultiArray>(thrusters_topic, 1);
 
-  ros::Rate loop_rate(50);
+  ros::Rate loop_rate(200);
+
   double thrust_req[5];
+  double last_thrust_req[5];
+  double current_thrust_req[5];
+  memset(last_thrust_req, 0, sizeof(last_thrust_req)); //clear array
+
   sleep(10);
   while(ros::ok())
   {
@@ -73,13 +78,51 @@ int main(int argc, char **argv){
     //std::cout<<twist.linear[0]-dvl.linear[0]<<" "<<twist.linear[1]-dvl.linear[1]<<" "<<twist.linear[2]-dvl.linear[2]<<std::endl;
     //std::cout<<"DESIRED: "<<twist.linear[2]<<" REAL:"<<dvl.linear[2]<<" APLICADA: "<<twist.linear[2]-dvl.linear[2]<<std::endl;
 
-    thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5 - twist.angular[2];//-1.142857143*twist.linear[0];
-    thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5 + twist.angular[2];//-1.142857143*twist.linear[0];
-    thrust_req[2]=-(twist.linear[2]-dvl.linear[2])*5; //up y down
-    thrust_req[3]=-(twist.linear[2]-dvl.linear[2])*5;
-    thrust_req[4]=(twist.linear[1]+dvl.linear[1])*6; //1.6*twist.linear[1];
 
-    //std::cout<<thrust_req[0]<<" "<<thrust_req[1]<<" "<<thrust_req[2]<<" "<<thrust_req[3]<<" "<<thrust_req[4]<<std::endl;
+/*	if (twist.angular[2] != 0)
+	{
+		thrust_req[0] = -twist.angular[2];
+	    thrust_req[1] = twist.angular[2];
+	    thrust_req[2] = 0;
+	    thrust_req[3] = 0;
+		thrust_req[4] = 0;
+	}
+	else
+	{*/
+//    thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5 - twist.angular[2];
+//    thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5 + twist.angular[2];
+/*		thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5;
+		thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5;
+		thrust_req[2]=-(twist.linear[2]-dvl.linear[2])*5;
+		thrust_req[3]=-(twist.linear[2]-dvl.linear[2])*5;
+		thrust_req[4]=(twist.linear[1]+dvl.linear[1])*6; */
+
+/*		thrust_req[0] = -twist.linear[0] - twist.angular[2];
+		thrust_req[1] = -twist.linear[0] + twist.angular[2];
+		thrust_req[2] = -twist.linear[2];
+		thrust_req[3] = -twist.linear[2];
+		thrust_req[4] =  twist.linear[1];*/
+
+		current_thrust_req[0] = -twist.linear[0] - twist.angular[2];
+		current_thrust_req[1] = -twist.linear[0] + twist.angular[2];
+		current_thrust_req[2] = -twist.linear[2];
+		current_thrust_req[3] = -twist.linear[2];
+		current_thrust_req[4] =  twist.linear[1];
+		
+		thrust_req[0] = (current_thrust_req[0] + last_thrust_req[0]) / 2;
+		thrust_req[1] = (current_thrust_req[1] + last_thrust_req[1]) / 2;
+		thrust_req[2] = (current_thrust_req[2] + last_thrust_req[2]) / 2;
+		thrust_req[3] = (current_thrust_req[3] + last_thrust_req[3]) / 2;
+		thrust_req[4] = (current_thrust_req[4] + last_thrust_req[4]) / 2;
+
+		last_thrust_req[0] = current_thrust_req[0];
+		last_thrust_req[1] = current_thrust_req[1];
+		last_thrust_req[2] = current_thrust_req[2];
+		last_thrust_req[3] = current_thrust_req[3];
+		last_thrust_req[4] = current_thrust_req[4];
+
+//	}
+    std::cout<<thrust_req[0]<<" "<<thrust_req[1]<<" "<<thrust_req[2]<<" "<<thrust_req[3]<<" "<<thrust_req[4]<<std::endl;
 
     //Send message to Simulator
     std_msgs::Float64MultiArray msg;

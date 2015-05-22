@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
  roscpp
  geometry_msgs
  tf
+ underwater_sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -82,7 +83,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES measurer
-  CATKIN_DEPENDS geometry_msgs tf
+  CATKIN_DEPENDS geometry_msgs tf underwater_sensor_msgs
 #  DEPENDS system_lib
 )
 
