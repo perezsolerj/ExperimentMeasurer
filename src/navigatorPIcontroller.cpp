@@ -7,15 +7,23 @@
 using namespace std;
 
 
-void enableRunBool(hrov_control::HrovControlStdMsg::Request &req, hrov_control::HrovControlStdMsg::Response &res)
+bool NavPiController::enableRunBool(hrov_control::HrovControlStdMsg::Request &req, hrov_control::HrovControlStdMsg::Response &res)
 {
-//	navPiControlInfo.enableExecution = req.boolValue;
-//	res.boolValue = safetyInfo.safetyAlarm;
+	enableExecution = req.boolValue;
+//	cout << "enableExecution: " << req.boolValue << endl;
+	
+	res.boolValue = false; //Mission finished with error
+	//check if the robot achieve the desired position
+	//if (desiredPosition)
+		//	res.boolValue = true; //Mission finished successfully
+
+	return true;
 }
 
 NavPiController::NavPiController()
 {
-	safetyAlarm = false;
+	safetyAlarm 	= false;
+	enableExecution = false;
 	
 	sub_pose = nh.subscribe("gotopose", 1000, &PoseCallback::callback,&pose);
 	
@@ -23,8 +31,8 @@ NavPiController::NavPiController()
 	pub = nh.advertise<nav_msgs::Odometry>("dataNavigator", 1);
 
 	//Services initialization
-//	runBlackboxGotoPoseSrv = nh.advertiseService<hrov_control::HrovControlStdMsg>("runBlackboxGotoPoseSrv", enableRunBool);
-
+	runBlackboxGotoPoseSrv = nh.advertiseService("runBlackboxGotoPoseSrv", &NavPiController::enableRunBool, this);
+	
 }
 
 NavPiController::~NavPiController()
@@ -50,7 +58,7 @@ void NavPiController::GoToPose()
 	{
 //		cout << "Inside while safetyAlarm: " << safetyAlarm << endl;
 //		cout << "enableExecution: " << enableExecution << endl;
-		if (!safetyAlarm)
+		if ((!safetyAlarm) and (enableExecution))
 		{
 			cout << "safetyAlarm: " << safetyAlarm << ", the robot is working..." << endl;
 
@@ -80,8 +88,13 @@ void NavPiController::GoToPose()
 			pub.publish(msg);
 		}
 		else
-			std::cout << "safetyAlarm: " << safetyAlarm << ", the robot is stopped..." << std::endl;
-
+		{
+			if (safetyAlarm)
+				cout << "safetyAlarm: " << safetyAlarm << ", the robot is stopped..." << endl;
+			if (enableExecution)
+				cout << "enableExecution: " << enableExecution << endl;
+			
+		}
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

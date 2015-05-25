@@ -73,5 +73,6 @@ class NavPiController
 		ros::ServiceServer	runBlackboxGotoPoseSrv;
 
 		void safetyMeasuresCallback(const std_msgs::Bool::ConstPtr& msg);
+		bool enableRunBool(hrov_control::HrovControlStdMsg::Request &req, hrov_control::HrovControlStdMsg::Response &res);
 
 };
