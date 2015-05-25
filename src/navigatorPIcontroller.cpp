@@ -1,142 +1,99 @@
 #include <iostream>
 #include <stdlib.h>
-#include <geometry_msgs/TwistStamped.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <nav_msgs/Odometry.h>
-#include <std_msgs/String.h>
-#include <std_msgs/Bool.h>
-#include "ros/ros.h"
-
-#define SAT	5
-
-//Camera info callback to get size of the camera
-class PoseCallback{
-  public:
-    double pos[3];
-    double quat[4];
- 
-	//Indicates the robot desired position
-    void callback(const geometry_msgs::PoseStamped& msg) {
-      pos[0]=msg.pose.position.x;
-      pos[1]=msg.pose.position.y;
-      pos[2]=msg.pose.position.z;
-
-      quat[0]=msg.pose.orientation.x;
-      quat[1]=msg.pose.orientation.y;
-      quat[2]=msg.pose.orientation.z;
-      quat[3]=msg.pose.orientation.w;
-    }
-};
+#include <string.h>
+#include "../include/ExperimentMeasurer/navigatorPIcontroller.h"
 
 
-class BenchmarkInfoCallback{
-  public:
-    int newIteration;
-
-    BenchmarkInfoCallback(){
-      newIteration=0;
-    }
-
-    void callback(const std_msgs::String& msg) {
-      if(msg.data!="")
-	newIteration=1;
-    }
-};
+using namespace std;
 
 
-class SafetyMeasuresCallback{
-  public:
-    bool safetyAlarm;
+void enableRunBool(hrov_control::HrovControlStdMsg::Request &req, hrov_control::HrovControlStdMsg::Response &res)
+{
+//	navPiControlInfo.enableExecution = req.boolValue;
+//	res.boolValue = safetyInfo.safetyAlarm;
+}
 
-    SafetyMeasuresCallback(){
-      safetyAlarm = false;
-    }
-
-    void callback(const std_msgs::Bool & msg) {
-      safetyAlarm = msg.data;
-    }
-};
-
-
-class NavPiController {
+NavPiController::NavPiController()
+{
+	safetyAlarm = false;
 	
-};
+	sub_pose = nh.subscribe("gotopose", 1000, &PoseCallback::callback,&pose);
+	
+	sub_safetyInfo = nh.subscribe<std_msgs::Bool>("safetyMeasures", 1, &NavPiController::safetyMeasuresCallback,this);
+	pub = nh.advertise<nav_msgs::Odometry>("dataNavigator", 1);
+
+	//Services initialization
+//	runBlackboxGotoPoseSrv = nh.advertiseService<hrov_control::HrovControlStdMsg>("runBlackboxGotoPoseSrv", enableRunBool);
+
+}
+
+NavPiController::~NavPiController()
+{
+}
 
 
-int main(int argc, char **argv){
-  std::string pose_topic, velocity_topic, benchinfo_topic, safetyinfo_topic;
-  PoseCallback pose;
-  BenchmarkInfoCallback benchInfo;
-  SafetyMeasuresCallback safetyInfo;
-  double gain,Igain;
+void NavPiController::safetyMeasuresCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+      safetyAlarm = msg->data;
+//      cout << "Inside callback safetyAlarm: " << safetyAlarm << endl;
+}
 
-  ros::init(argc, argv, "navigatorPIcontroller");
-  ros::NodeHandle nh;
- 
-  nh.param("pose", pose_topic, (std::string)"gotopose");
-  nh.param("velocity", velocity_topic, (std::string)"dataNavigator");
-  nh.param("benchinfo", benchinfo_topic, (std::string)"BenchmarkInfo");
-  nh.param("safetyinfo", safetyinfo_topic, (std::string)"safetyMeasures");
-  nh.param("gain", gain, 0.5);
-  nh.param("Igain", Igain, 0.001);
+void NavPiController::GoToPose()
+{
+	double Itermx = 0;
+	double Itermy = 0;
+	double Itermz = 0;
+	double gain,Igain;	
 
-  ros::Subscriber sub_pose = nh.subscribe(pose_topic, 1000, &PoseCallback::callback,&pose);
-  ros::Subscriber sub_benchInfo = nh.subscribe(benchinfo_topic, 1000, &BenchmarkInfoCallback::callback,&benchInfo);
-  ros::Subscriber sub_safetyInfo = nh.subscribe(safetyinfo_topic, 1000, &SafetyMeasuresCallback::callback,&safetyInfo);
-  ros::Publisher pub=nh.advertise<nav_msgs::Odometry>(velocity_topic, 1);
+	ros::Rate loop_rate(50);
+	while ( ros::ok() )
+	{
+//		cout << "Inside while safetyAlarm: " << safetyAlarm << endl;
+//		cout << "enableExecution: " << enableExecution << endl;
+		if (!safetyAlarm)
+		{
+			cout << "safetyAlarm: " << safetyAlarm << ", the robot is working..." << endl;
 
-  double Itermx=0;
-  double Itermy=0;
-  double Itermz=0;
+			//Compute control law
+			double errorx=gain*(pose.pos[0]);
+			double errory=gain*(pose.pos[1]);
+			double errorz=gain*(pose.pos[2]);
 
-  ros::Rate loop_rate(50);
+			Itermx+=pose.pos[0];
+			Itermy+=pose.pos[1];
+			Itermz+=pose.pos[2];
 
-  while ( ros::ok() )
-  {
-	  if (!safetyInfo.safetyAlarm)
-	  {
-		std::cout << "safetyAlarm: " << safetyInfo.safetyAlarm << std::endl;
+			//Send message to Simulator
+			nav_msgs::Odometry msg;
 
-		//Check if newIteration started to restart Iterms
-		if(benchInfo.newIteration){
-		  Itermx=0;
-		  Itermy=0;
-		  Itermz=0;
-		  benchInfo.newIteration=0;
+			msg.twist.twist.linear.x=errorx+Igain*Itermx;
+			msg.twist.twist.linear.y=errory+Igain*Itermy;
+			msg.twist.twist.linear.z=errorz+Igain*Itermz;
+			msg.twist.twist.angular.x=0;
+			msg.twist.twist.angular.y=0;
+			msg.twist.twist.angular.z=0;
+
+			if (msg.twist.twist.linear.x>SAT) msg.twist.twist.linear.x=SAT; else if (msg.twist.twist.linear.x<-SAT) msg.twist.twist.linear.x=-SAT;
+			if (msg.twist.twist.linear.y>SAT) msg.twist.twist.linear.y=SAT; else if (msg.twist.twist.linear.y<-SAT) msg.twist.twist.linear.y=-SAT;
+			if (msg.twist.twist.linear.z>SAT) msg.twist.twist.linear.z=SAT; else if (msg.twist.twist.linear.z<-SAT) msg.twist.twist.linear.z=-SAT;
+
+			pub.publish(msg);
 		}
-		
-		//Compute control law
-		double errorx=gain*(pose.pos[0]);
-		double errory=gain*(pose.pos[1]);
-		double errorz=gain*(pose.pos[2]);
+		else
+			std::cout << "safetyAlarm: " << safetyAlarm << ", the robot is stopped..." << std::endl;
 
-		Itermx+=pose.pos[0];
-		Itermy+=pose.pos[1];
-		Itermz+=pose.pos[2];
-
-		//Send message to Simulator
-		//geometry_msgs::TwistStamped msg;
-		nav_msgs::Odometry msg;
-
-		msg.twist.twist.linear.x=errorx+Igain*Itermx;
-		msg.twist.twist.linear.y=errory+Igain*Itermy;
-		msg.twist.twist.linear.z=errorz+Igain*Itermz;
-		msg.twist.twist.angular.x=0;
-		msg.twist.twist.angular.y=0;
-		msg.twist.twist.angular.z=0;
-
-		if (msg.twist.twist.linear.x>SAT) msg.twist.twist.linear.x=SAT; else if (msg.twist.twist.linear.x<-SAT) msg.twist.twist.linear.x=-SAT;
-		if (msg.twist.twist.linear.y>SAT) msg.twist.twist.linear.y=SAT; else if (msg.twist.twist.linear.y<-SAT) msg.twist.twist.linear.y=-SAT;
-		if (msg.twist.twist.linear.z>SAT) msg.twist.twist.linear.z=SAT; else if (msg.twist.twist.linear.z<-SAT) msg.twist.twist.linear.z=-SAT;
-
-		pub.publish(msg);
+		ros::spinOnce();
+		loop_rate.sleep();
 	}
-	else
-		std::cout << "safetyAlarm: " << safetyInfo.safetyAlarm << std::endl;
 
-    ros::spinOnce();
-    loop_rate.sleep();
-  }
+	
+}
 
+int main(int argc, char **argv)
+{
+	ros::init(argc, argv, "navigatorPIcontroller");
+	NavPiController navPiControl;
+	navPiControl.GoToPose();
+ 
 }
 

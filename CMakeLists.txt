@@ -7,8 +7,10 @@ project(measurer)
 find_package(catkin REQUIRED COMPONENTS
  roscpp
  geometry_msgs
+ std_msgs
  tf
  underwater_sensor_msgs
+ hrov_control
 )
 
 ## System dependencies are found with CMake's conventions
@@ -81,9 +83,13 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES measurer
-  CATKIN_DEPENDS geometry_msgs tf underwater_sensor_msgs
+  CATKIN_DEPENDS
+	geometry_msgs
+	std_msgs
+	tf
+	underwater_sensor_msgs
 #  DEPENDS system_lib
 )
 
