@@ -36,8 +36,16 @@ class NavPiController
 		bool			safetyAlarm;
 		bool			targetPosition;
 		bool			userControlRequest;
+		double			lastRobotTargetDist;
+		double			currentRobotTargetDist;
 
+		ros::Time		initMissionTime;
+		ros::Time		currentMissionTime;
+		ros::Duration	totalMissionTime;
+		
 		void GoToPose();
+		
+
 		
 	private:
 		ros::NodeHandle nh;
