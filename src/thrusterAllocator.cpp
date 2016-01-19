@@ -1,9 +1,14 @@
 //#include <geometry_msgs/TwistStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/Bool.h>
 #include "ros/ros.h"
 #include "underwater_sensor_msgs/DVL.h"
+
 #define SAT	5
+
+//DEBUG Flags
+#define DEBUG_thrusterAllocator	1
 
 //Twist callback to get velocity reference
 class TwistCallback{
@@ -48,10 +53,25 @@ class DVLCallback{
     }
 };
 
+//UserRequest callback to publish thruster data in AUV mode
+class UserReqCallback{
+	public:
+		bool data;
+
+		UserReqCallback(){
+			data = false;
+		}
+
+		void callback(const std_msgs::Bool::ConstPtr& msg) {
+			data = msg->data;
+			//std::cout << "UserReqCallback = " << data << std::endl;
+};
+
 int main(int argc, char **argv){
-  std::string twist_topic, thrusters_topic, dvl_topic;
+  std::string twist_topic, thrusters_topic, dvl_topic, userReq_topic;
   TwistCallback twist;
   DVLCallback dvl;
+  UserReqCallback userReq;
 
   ros::init(argc, argv, "vehicleThrusterAllocator");
   ros::NodeHandle nh;
@@ -59,9 +79,11 @@ int main(int argc, char **argv){
   nh.param("twist", twist_topic, (std::string)"/dataNavigator");
   nh.param("thrusters", thrusters_topic, (std::string)"/g500/thrusters_input");
   nh.param("dvl", dvl_topic, (std::string)"/g500/dvl");
+  nh.param("userReq", userReq_topic, (std::string)"/userControlRequest");
 
   ros::Subscriber sub_twist = nh.subscribe(twist_topic, 1000, &TwistCallback::callback,&twist);
   ros::Subscriber sub_dvl = nh.subscribe(dvl_topic, 1000, &DVLCallback::callback,&dvl);
+  ros::Subscriber sub_userReq = nh.subscribe(userReq_topic, 1000, &UserReqCallback::callback,&userReq);
   ros::Publisher pub=nh.advertise<std_msgs::Float64MultiArray>(thrusters_topic, 1);
 
   ros::Rate loop_rate(200);
@@ -75,11 +97,14 @@ int main(int argc, char **argv){
   while(ros::ok())
   {
     memset(thrust_req, 0, sizeof(thrust_req)); //clear array
+    
+    
+/*  ROBOT ROTATION CODE    
     //std::cout<<twist.linear[0]-dvl.linear[0]<<" "<<twist.linear[1]-dvl.linear[1]<<" "<<twist.linear[2]-dvl.linear[2]<<std::endl;
     //std::cout<<"DESIRED: "<<twist.linear[2]<<" REAL:"<<dvl.linear[2]<<" APLICADA: "<<twist.linear[2]-dvl.linear[2]<<std::endl;
 
 
-/*	if (twist.angular[2] != 0)
+	if (twist.angular[2] != 0)
 	{
 		thrust_req[0] = -twist.angular[2];
 	    thrust_req[1] = twist.angular[2];
@@ -88,56 +113,54 @@ int main(int argc, char **argv){
 		thrust_req[4] = 0;
 	}
 	else
-	{*/
-//    thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5 - twist.angular[2];
-//    thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5 + twist.angular[2];
-/*		thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5;
+	{
+		thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5 - twist.angular[2];
+		thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5 + twist.angular[2];
+		thrust_req[0]=(-twist.linear[0]-dvl.linear[0])*5;
 		thrust_req[1]=(-twist.linear[0]-dvl.linear[0])*5;
 		thrust_req[2]=-(twist.linear[2]-dvl.linear[2])*5;
 		thrust_req[3]=-(twist.linear[2]-dvl.linear[2])*5;
-		thrust_req[4]=(twist.linear[1]+dvl.linear[1])*6; */
+		thrust_req[4]=(twist.linear[1]+dvl.linear[1])*6;
 
-/*		thrust_req[0] = -twist.linear[0] - twist.angular[2];
+		thrust_req[0] = -twist.linear[0] - twist.angular[2];
 		thrust_req[1] = -twist.linear[0] + twist.angular[2];
 		thrust_req[2] = -twist.linear[2];
 		thrust_req[3] = -twist.linear[2];
 		thrust_req[4] =  twist.linear[1];*/
 
-		current_thrust_req[0] = -twist.linear[0] - twist.angular[2];
-		current_thrust_req[1] = -twist.linear[0] + twist.angular[2];
-		current_thrust_req[2] = -twist.linear[2];
-		current_thrust_req[3] = -twist.linear[2];
-		current_thrust_req[4] =  twist.linear[1];
-		
-		thrust_req[0] = (current_thrust_req[0] + last_thrust_req[0]) / 2;
-		thrust_req[1] = (current_thrust_req[1] + last_thrust_req[1]) / 2;
-		thrust_req[2] = (current_thrust_req[2] + last_thrust_req[2]) / 2;
-		thrust_req[3] = (current_thrust_req[3] + last_thrust_req[3]) / 2;
-		thrust_req[4] = (current_thrust_req[4] + last_thrust_req[4]) / 2;
+	current_thrust_req[0] = -twist.linear[0] - twist.angular[2];
+	current_thrust_req[1] = -twist.linear[0] + twist.angular[2];
+	current_thrust_req[2] = -twist.linear[2];
+	current_thrust_req[3] = -twist.linear[2];
+	current_thrust_req[4] =  twist.linear[1];
+	
+	thrust_req[0] = (current_thrust_req[0] + last_thrust_req[0]) / 2;
+	thrust_req[1] = (current_thrust_req[1] + last_thrust_req[1]) / 2;
+	thrust_req[2] = (current_thrust_req[2] + last_thrust_req[2]) / 2;
+	thrust_req[3] = (current_thrust_req[3] + last_thrust_req[3]) / 2;
+	thrust_req[4] = (current_thrust_req[4] + last_thrust_req[4]) / 2;
 
-		last_thrust_req[0] = current_thrust_req[0];
-		last_thrust_req[1] = current_thrust_req[1];
-		last_thrust_req[2] = current_thrust_req[2];
-		last_thrust_req[3] = current_thrust_req[3];
-		last_thrust_req[4] = current_thrust_req[4];
-
-//	}
-    std::cout<<thrust_req[0]<<" "<<thrust_req[1]<<" "<<thrust_req[2]<<" "<<thrust_req[3]<<" "<<thrust_req[4]<<std::endl;
+	last_thrust_req[0] = current_thrust_req[0];
+	last_thrust_req[1] = current_thrust_req[1];
+	last_thrust_req[2] = current_thrust_req[2];
+	last_thrust_req[3] = current_thrust_req[3];
+	last_thrust_req[4] = current_thrust_req[4];
 
     //Send message to Simulator
-    std_msgs::Float64MultiArray msg;
-
-    msg.data.push_back(thrust_req[0]);
-    msg.data.push_back(thrust_req[1]);
-    msg.data.push_back(thrust_req[2]);
-    msg.data.push_back(thrust_req[3]);
-    msg.data.push_back(thrust_req[4]);
-   
-    pub.publish(msg);
+	if (!userReq.data) {
+		std_msgs::Float64MultiArray msg;
+		for (int i=0; i<5; i++)
+			msg.data.push_back(thrust_req[i]);
+		pub.publish(msg);
+	}
+	
+	if (DEBUG_thrusterAllocator) {
+		std::cout << "Thrusters array: " << thrust_req[0] << ", " << thrust_req[1] << ", " << thrust_req[2] << \
+					", " <<thrust_req[3] << ", " << thrust_req[4] << std::endl;
+	}
 
     ros::spinOnce();
     loop_rate.sleep();
   }
-
 }
 
