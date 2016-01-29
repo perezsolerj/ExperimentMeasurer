@@ -6,8 +6,6 @@
 #include "underwater_sensor_msgs/DVL.h"
 
 #define SAT	5
-
-//DEBUG Flags
 #define DEBUG_thrusterAllocator	1
 
 //Twist callback to get velocity reference
@@ -65,9 +63,10 @@ class UserReqCallback{
 		void callback(const std_msgs::Bool::ConstPtr& msg) {
 			data = msg->data;
 			//std::cout << "UserReqCallback = " << data << std::endl;
+		}
 };
 
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
   std::string twist_topic, thrusters_topic, dvl_topic, userReq_topic;
   TwistCallback twist;
   DVLCallback dvl;
@@ -94,8 +93,7 @@ int main(int argc, char **argv){
   memset(last_thrust_req, 0, sizeof(last_thrust_req)); //clear array
 
   sleep(10);
-  while(ros::ok())
-  {
+  while(ros::ok()) {
     memset(thrust_req, 0, sizeof(thrust_req)); //clear array
     
     
@@ -163,4 +161,3 @@ int main(int argc, char **argv){
     loop_rate.sleep();
   }
 }
-
