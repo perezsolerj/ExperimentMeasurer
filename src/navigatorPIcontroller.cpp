@@ -17,8 +17,8 @@
 #include "../include/ExperimentMeasurer/navigatorPIcontroller.h"
 
 //DEBUG Flags
-#define DEBUG_FLAG	0
-#define SAT	5
+#define DEBUG_FLAG	1
+#define SAT			5
 
 using namespace std;
 
@@ -28,8 +28,6 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "navigatorPIcontroller");
 	NavPiController navPiControl;
 	ros::spin();
-//	navPiControl.GoToPose();
- 
 }
 
 
@@ -70,9 +68,9 @@ bool NavPiController::enableRunBool(hrov_control::HrovControlStdMsg::Request &re
 	GoToPose();
 
 	if ((!targetPosition) and (!enableExecution))
-		res.boolValue = false; //Mission finished with error
+		res.boolValue = false;	//Mission finished with error
 	if ((targetPosition) and (enableExecution))
-		res.boolValue = true; //Mission finished successfully
+		res.boolValue = true;	//Mission finished successfully
 
 	return true;
 }
@@ -104,30 +102,42 @@ void NavPiController::odomCallback(const geometry_msgs::Pose::ConstPtr& odomValu
 	//Checking if the robot has achieved the target position
 	currentRobotTargetDist = sqrt( (double)(pow(robotTargetPose.position.x, 2)) \
 		+ (double)(pow(robotTargetPose.position.y, 2)) + (double)(pow(robotTargetPose.position.z, 2)) );
-	cout << "currentRobotTargetDist = " << currentRobotTargetDist << endl;
 	if ((currentRobotTargetDist < 0.3) and (enableExecution))
+	{
 		targetPosition = true;
-
+	}
+	
 	//Checking if the robot is stopped
 	errorDist = lastRobotTargetDist - currentRobotTargetDist;
-	cout << "errorDist = " << errorDist << endl;
 	currentMissionTime = ros::Time::now();
 	totalMissionTime = currentMissionTime - initMissionTime;
-//	if ((abs(errorDist) < 0.0001) and (abs(errorDist) > 0.0001) and (enableExecution))
+	//To Fix: we need to control when the robot is stopped
+/*	cout << "currentRobotTargetDist = " << currentRobotTargetDist << endl;
+	cout << "errorDist = " << errorDist << endl;
+	cout << "totalMissionTime = " << totalMissionTime.toSec() << endl;
 	if ((abs(errorDist) < 0.000001) and (enableExecution) and (totalMissionTime.toSec() > 2.0) )
-		enableExecution = false;
-	cout << "enableExecution = " << enableExecution << endl;
-	cout << "targetPosition = " << targetPosition << endl;
+	{
+		//enableExecution = false;				//Error aquí!!!!!
+		cout << "robot is stopped??" << endl;
+	}*/
 
 	if (DEBUG_FLAG)
 	{
-		cout << "enableExecution = " << enableExecution <<  ". Robot problem" << endl;
-		cout << "targetPosition = " << targetPosition << ". the robot has achieved the target position" << endl;
-		//cout << "Position\n" << odomValue->position << "\nOrientation\n" << odomValue->orientation << endl;
-		cout << "robotErrorPose  = " << robotErrorPose.position.x << ", " << \
+		cout << "currentRobotTargetDist = " << currentRobotTargetDist << endl;
+		cout << "errorDist = " << errorDist << endl;
+		cout << "totalMissionTime = " << totalMissionTime.toSec() << endl;
+		if (enableExecution)
+			cout << "The robot is working. enableExecution = " << enableExecution << endl;
+		else
+			cout << "Robot problem. enableExecution = " << enableExecution << endl;
+		if (targetPosition)
+			cout << "The robot has achieved the target position. targetPosition = " << targetPosition << endl;
+		else
+			cout << "Mission failed. The robot has not achieve the target position. targetPosition = " << targetPosition << endl;
+		/*cout << "robotErrorPose  = " << robotErrorPose.position.x << ", " << \
 				robotErrorPose.position.y << ", " << robotErrorPose.position.z << endl;
 		cout << "robotTargetPose = " << robotTargetPose.position.x << ", " << \
-				robotTargetPose.position.y << ", " << robotTargetPose.position.z << endl;
+				robotTargetPose.position.y << ", " << robotTargetPose.position.z << endl; */
 	}
 }
 
@@ -139,11 +149,9 @@ void NavPiController::GoToPose()
 	double gain = 0.5, Igain = 0;	
 
 	ros::Rate loop_rate(50);
+	
 	while ((enableExecution) and (!targetPosition) and (!userControlRequest))
 	{
-		cout << "Inside if: robotTargetPose = " << robotTargetPose.position.x << ", " <<robotTargetPose.position.y << ", "\
-									<< robotTargetPose.position.z << endl;
-
 		//Compute control law
 		errorx = gain * (robotTargetPose.position.x);
 		errory = gain * (robotTargetPose.position.y);
@@ -161,10 +169,20 @@ void NavPiController::GoToPose()
 		msg.twist.twist.angular.x = 0;
 		msg.twist.twist.angular.y = 0;
 		msg.twist.twist.angular.z = 0;
-		if (msg.twist.twist.linear.x>SAT) msg.twist.twist.linear.x=SAT; else if (msg.twist.twist.linear.x<-SAT) msg.twist.twist.linear.x=-SAT;
-		if (msg.twist.twist.linear.y>SAT) msg.twist.twist.linear.y=SAT; else if (msg.twist.twist.linear.y<-SAT) msg.twist.twist.linear.y=-SAT;
-		if (msg.twist.twist.linear.z>SAT) msg.twist.twist.linear.z=SAT; else if (msg.twist.twist.linear.z<-SAT) msg.twist.twist.linear.z=-SAT;
+		if (msg.twist.twist.linear.x > SAT) msg.twist.twist.linear.x = SAT; else if (msg.twist.twist.linear.x < -SAT) msg.twist.twist.linear.x = -SAT;
+		if (msg.twist.twist.linear.y > SAT) msg.twist.twist.linear.y = SAT; else if (msg.twist.twist.linear.y < -SAT) msg.twist.twist.linear.y = -SAT;
+		if (msg.twist.twist.linear.z > SAT) msg.twist.twist.linear.z = SAT; else if (msg.twist.twist.linear.z < -SAT) msg.twist.twist.linear.z = -SAT;
 		pub_odom.publish(msg);
+
+		if (DEBUG_FLAG)
+		{
+			cout << "Inside if: robotTargetPose = " << robotTargetPose.position.x << ", " <<robotTargetPose.position.y << ", "\
+				 << robotTargetPose.position.z << endl;
+			cout << "enableExecution: " << enableExecution << ". TargetPosition: " << targetPosition \
+				 << ". userControlRequest: " << userControlRequest << endl;
+			cout << "msg.twist.twist" << endl;
+			cout << msg.twist.twist << endl;
+		}
 
 		ros::spinOnce();
 		loop_rate.sleep();
