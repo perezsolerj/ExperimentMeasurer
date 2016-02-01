@@ -17,8 +17,10 @@
 #include "../include/ExperimentMeasurer/navigatorPIcontroller.h"
 
 //DEBUG Flags
-#define DEBUG_FLAG	1
-#define SAT			5
+#define DEBUG_FLAG_BOOL	1
+#define DEBUG_FLAG_DATA	0
+#define DEBUG_FLAG_BACK	0
+#define SAT				5
 
 using namespace std;
 
@@ -66,12 +68,12 @@ bool NavPiController::enableRunBool(hrov_control::HrovControlStdMsg::Request &re
 	targetPosition = false;
 	initMissionTime = ros::Time::now();
 	GoToPose();
-
+	
 	if ((!targetPosition) and (!enableExecution))
 		res.boolValue = false;	//Mission finished with error
 	if ((targetPosition) and (enableExecution))
 		res.boolValue = true;	//Mission finished successfully
-
+		
 	return true;
 }
 
@@ -111,6 +113,7 @@ void NavPiController::odomCallback(const geometry_msgs::Pose::ConstPtr& odomValu
 	errorDist = lastRobotTargetDist - currentRobotTargetDist;
 	currentMissionTime = ros::Time::now();
 	totalMissionTime = currentMissionTime - initMissionTime;
+	
 	//To Fix: we need to control when the robot is stopped
 /*	cout << "currentRobotTargetDist = " << currentRobotTargetDist << endl;
 	cout << "errorDist = " << errorDist << endl;
@@ -121,23 +124,26 @@ void NavPiController::odomCallback(const geometry_msgs::Pose::ConstPtr& odomValu
 		cout << "robot is stopped??" << endl;
 	}*/
 
-	if (DEBUG_FLAG)
+	if (DEBUG_FLAG_BOOL)
 	{
 		cout << "currentRobotTargetDist = " << currentRobotTargetDist << endl;
-		cout << "errorDist = " << errorDist << endl;
-		cout << "totalMissionTime = " << totalMissionTime.toSec() << endl;
 		if (enableExecution)
 			cout << "The robot is working. enableExecution = " << enableExecution << endl;
 		else
-			cout << "Robot problem. enableExecution = " << enableExecution << endl;
+			cout << "The robot has a problem. enableExecution = " << enableExecution << endl;
 		if (targetPosition)
 			cout << "The robot has achieved the target position. targetPosition = " << targetPosition << endl;
 		else
-			cout << "Mission failed. The robot has not achieve the target position. targetPosition = " << targetPosition << endl;
-		/*cout << "robotErrorPose  = " << robotErrorPose.position.x << ", " << \
+			cout << "The robot has not achieved the target position. targetPosition = " << targetPosition << endl;
+	}
+	if (DEBUG_FLAG_DATA)
+	{
+		cout << "errorDist = " << errorDist << endl;
+		cout << "totalMissionTime = " << totalMissionTime.toSec() << endl;
+		cout << "robotErrorPose  = " << robotErrorPose.position.x << ", " << \
 				robotErrorPose.position.y << ", " << robotErrorPose.position.z << endl;
 		cout << "robotTargetPose = " << robotTargetPose.position.x << ", " << \
-				robotTargetPose.position.y << ", " << robotTargetPose.position.z << endl; */
+				robotTargetPose.position.y << ", " << robotTargetPose.position.z << endl; 
 	}
 }
 
@@ -150,40 +156,38 @@ void NavPiController::GoToPose()
 
 	ros::Rate loop_rate(50);
 	
-	while ((enableExecution) and (!targetPosition) and (!userControlRequest))
+	while ((enableExecution) and (!targetPosition))
 	{
-		//Compute control law
-		errorx = gain * (robotTargetPose.position.x);
-		errory = gain * (robotTargetPose.position.y);
-		errorz = gain * (robotTargetPose.position.z);
-
-		Itermx += robotTargetPose.position.x;
-		Itermy += robotTargetPose.position.y;
-		Itermz += robotTargetPose.position.z;
-
-		//Send message to Simulator
-		nav_msgs::Odometry msg;
-		msg.twist.twist.linear.x  = errory + Igain * Itermy;
-		msg.twist.twist.linear.y  = -errorx - Igain * Itermx;
-		msg.twist.twist.linear.z  = errorz + Igain * Itermz;
-		msg.twist.twist.angular.x = 0;
-		msg.twist.twist.angular.y = 0;
-		msg.twist.twist.angular.z = 0;
-		if (msg.twist.twist.linear.x > SAT) msg.twist.twist.linear.x = SAT; else if (msg.twist.twist.linear.x < -SAT) msg.twist.twist.linear.x = -SAT;
-		if (msg.twist.twist.linear.y > SAT) msg.twist.twist.linear.y = SAT; else if (msg.twist.twist.linear.y < -SAT) msg.twist.twist.linear.y = -SAT;
-		if (msg.twist.twist.linear.z > SAT) msg.twist.twist.linear.z = SAT; else if (msg.twist.twist.linear.z < -SAT) msg.twist.twist.linear.z = -SAT;
-		pub_odom.publish(msg);
-
-		if (DEBUG_FLAG)
+		if (!userControlRequest)
 		{
-			cout << "Inside if: robotTargetPose = " << robotTargetPose.position.x << ", " <<robotTargetPose.position.y << ", "\
-				 << robotTargetPose.position.z << endl;
-			cout << "enableExecution: " << enableExecution << ". TargetPosition: " << targetPosition \
-				 << ". userControlRequest: " << userControlRequest << endl;
-			cout << "msg.twist.twist" << endl;
-			cout << msg.twist.twist << endl;
-		}
+			//Compute control law
+			errorx = gain * (robotTargetPose.position.x);
+			errory = gain * (robotTargetPose.position.y);
+			errorz = gain * (robotTargetPose.position.z);
 
+			Itermx += robotTargetPose.position.x;
+			Itermy += robotTargetPose.position.y;
+			Itermz += robotTargetPose.position.z;
+
+			//Send message to Simulator
+			nav_msgs::Odometry msg;
+			msg.twist.twist.linear.x  = errory + Igain * Itermy;
+			msg.twist.twist.linear.y  = -errorx - Igain * Itermx;
+			msg.twist.twist.linear.z  = errorz + Igain * Itermz;
+			msg.twist.twist.angular.x = 0;
+			msg.twist.twist.angular.y = 0;
+			msg.twist.twist.angular.z = 0;
+			if (msg.twist.twist.linear.x > SAT) msg.twist.twist.linear.x = SAT; else if (msg.twist.twist.linear.x < -SAT) msg.twist.twist.linear.x = -SAT;
+			if (msg.twist.twist.linear.y > SAT) msg.twist.twist.linear.y = SAT; else if (msg.twist.twist.linear.y < -SAT) msg.twist.twist.linear.y = -SAT;
+			if (msg.twist.twist.linear.z > SAT) msg.twist.twist.linear.z = SAT; else if (msg.twist.twist.linear.z < -SAT) msg.twist.twist.linear.z = -SAT;
+			pub_odom.publish(msg);
+
+			if (DEBUG_FLAG_DATA)
+			{
+				cout << "msg.twist.twist" << endl;
+				cout << msg.twist.twist << endl;
+			}
+		}
 		ros::spinOnce();
 		loop_rate.sleep();
 	}
@@ -208,7 +212,7 @@ void NavPiController::GoToPose()
 void NavPiController::userControlReqCallback(const std_msgs::Bool::ConstPtr& msg)
 {
 	userControlRequest = msg->data;
-	if (DEBUG_FLAG)
+	if (DEBUG_FLAG_BACK)
 		cout << "userControlRequestCallback: " << userControlRequest << endl;
 }
 
@@ -216,7 +220,7 @@ void NavPiController::userControlReqCallback(const std_msgs::Bool::ConstPtr& msg
 void NavPiController::safetyMeasuresCallback(const std_msgs::Bool::ConstPtr& msg)
 {
 	safetyAlarm = msg->data;
-	if (DEBUG_FLAG)
+	if (DEBUG_FLAG_BACK)
 		cout << "safetyMeasuresCallback: " << safetyAlarm << endl;
 }
 

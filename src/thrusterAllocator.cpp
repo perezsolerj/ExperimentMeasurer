@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
 	last_thrust_req[3] = current_thrust_req[3];
 	last_thrust_req[4] = current_thrust_req[4];
 
-    //Send message to Simulator
+    //Send message to UWSim when user don't request the robot control
 	if (!userReq.data) {
 		std_msgs::Float64MultiArray msg;
 		for (int i=0; i<5; i++)
