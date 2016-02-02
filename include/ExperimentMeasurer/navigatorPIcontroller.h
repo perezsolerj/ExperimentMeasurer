@@ -33,8 +33,8 @@ class NavPiController
 		~NavPiController();
 		
 		bool 			enableExecution;
-		bool			safetyAlarm;
 		bool			targetPosition;
+		bool			safetyAlarm;
 		bool			userControlRequest;
 		double			lastRobotTargetDist;
 		double			currentRobotTargetDist;
@@ -51,9 +51,6 @@ class NavPiController
 		ros::NodeHandle nh;
 
 		ros::Publisher		pub_odom;
-		ros::Publisher		pub_userControlRequest;
-		ros::Subscriber		sub_pose;
-		ros::Subscriber		sub_benchInfo;
 		ros::Subscriber		sub_odomInfo;
 		ros::Subscriber		sub_safetyInfo;
 		ros::Subscriber		sub_userControlInfo;

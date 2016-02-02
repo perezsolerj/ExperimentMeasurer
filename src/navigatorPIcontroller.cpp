@@ -202,8 +202,8 @@ void NavPiController::GoToPose()
 	msg.twist.twist.angular.z = 0;
 	pub_odom.publish(msg);
 
-	cout << "---------------- FINISH -------------------- " << endl;
-	cout << msg.twist.twist << endl;
+/*	cout << "---------------- FINISH -------------------- " << endl;
+	cout << msg.twist.twist << endl;*/
 	
 }
 
