@@ -2,6 +2,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int8MultiArray.h>
 #include "ros/ros.h"
 #include "underwater_sensor_msgs/DVL.h"
 
@@ -51,7 +52,7 @@ class DVLCallback{
     }
 };
 
-//UserRequest callback to publish thruster data in AUV mode
+//UserRequest callback to publish thruster data only in AUV mode
 class UserReqCallback{
 	public:
 		bool data;
@@ -66,11 +67,29 @@ class UserReqCallback{
 		}
 };
 
+
+//SafetyAlarmCallback callback to avoid publishing thruster data when safetyAlarm is true
+class SafetyAlarmCallback{
+	public:
+		int data;
+
+		SafetyAlarmCallback(){
+			data = 0;
+		}
+
+		void callback(const std_msgs::Int8MultiArray::ConstPtr& msg) {
+			data = msg->data[0];
+			//std::cout << "SafetyAlarmCallback = " << data << std::endl;
+		}
+};
+
+
 int main(int argc, char **argv) {
-  std::string twist_topic, thrusters_topic, dvl_topic, userReq_topic;
+  std::string twist_topic, thrusters_topic, dvl_topic, userReq_topic, safetyAlarm_topic;
   TwistCallback twist;
   DVLCallback dvl;
   UserReqCallback userReq;
+  SafetyAlarmCallback safetyAlarm;
 
   ros::init(argc, argv, "vehicleThrusterAllocator");
   ros::NodeHandle nh;
@@ -79,10 +98,12 @@ int main(int argc, char **argv) {
   nh.param("thrusters", thrusters_topic, (std::string)"/g500/thrusters_input");
   nh.param("dvl", dvl_topic, (std::string)"/g500/dvl");
   nh.param("userReq", userReq_topic, (std::string)"/userControlRequest");
+  nh.param("safetyAlam", safetyAlarm_topic, (std::string)"/safetyMeasures");
 
   ros::Subscriber sub_twist = nh.subscribe(twist_topic, 1000, &TwistCallback::callback,&twist);
   ros::Subscriber sub_dvl = nh.subscribe(dvl_topic, 1000, &DVLCallback::callback,&dvl);
   ros::Subscriber sub_userReq = nh.subscribe(userReq_topic, 1000, &UserReqCallback::callback,&userReq);
+  ros::Subscriber sub_safetyAlarm = nh.subscribe(safetyAlarm_topic, 1000, &SafetyAlarmCallback::callback,&safetyAlarm);
   ros::Publisher pub=nh.advertise<std_msgs::Float64MultiArray>(thrusters_topic, 1);
 
   ros::Rate loop_rate(200);
@@ -144,8 +165,10 @@ int main(int argc, char **argv) {
 	last_thrust_req[3] = current_thrust_req[3];
 	last_thrust_req[4] = current_thrust_req[4];
 
-    //Send message to UWSim when user don't request the robot control
-	if (!userReq.data) {
+    //Send message to UWSim when user doesn't request the robot control
+    //or there is any safetyAlarm
+	if (!userReq.data)
+	{
 		std_msgs::Float64MultiArray msg;
 		for (int i=0; i<5; i++)
 			msg.data.push_back(thrust_req[i]);
@@ -153,8 +176,11 @@ int main(int argc, char **argv) {
 	}
 	
 	if (DEBUG_thrusterAllocator) {
-		std::cout << "Thrusters array: " << thrust_req[0] << ", " << thrust_req[1] << ", " << thrust_req[2] << \
+		if (!userReq.data)
+			std::cout << "Thrusters array: " << thrust_req[0] << ", " << thrust_req[1] << ", " << thrust_req[2] << \
 					", " <<thrust_req[3] << ", " << thrust_req[4] << std::endl;
+		else
+			std::cout << "The user has the robot control" << std::endl;
 	}
 
     ros::spinOnce();

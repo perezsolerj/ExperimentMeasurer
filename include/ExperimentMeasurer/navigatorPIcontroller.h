@@ -21,6 +21,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int8MultiArray.h>
 #include <hrov_control/HrovControlStdMsg.h>
 
 using namespace std;
@@ -34,7 +35,6 @@ class NavPiController
 		
 		bool 			enableExecution;
 		bool			targetPosition;
-		bool			safetyAlarm;
 		bool			userControlRequest;
 		double			lastRobotTargetDist;
 		double			currentRobotTargetDist;
@@ -42,6 +42,9 @@ class NavPiController
 		ros::Time		initMissionTime;
 		ros::Time		currentMissionTime;
 		ros::Duration	totalMissionTime;
+
+		std_msgs::Int8MultiArray	safetyAlarm;
+
 		
 		void GoToPose();
 		
@@ -63,7 +66,7 @@ class NavPiController
 		geometry_msgs::PoseStamped  robotDesiredPosition;	//Where the robot should go
 
 		void odomCallback(const geometry_msgs::Pose::ConstPtr& odomValue);
-		void safetyMeasuresCallback(const std_msgs::Bool::ConstPtr& msg);
+		void safetyMeasuresCallback(const std_msgs::Int8MultiArray::ConstPtr& msg);
 		void userControlReqCallback(const std_msgs::Bool::ConstPtr& msg);
 		bool enableRunBool(hrov_control::HrovControlStdMsg::Request &req, hrov_control::HrovControlStdMsg::Response &res);
 

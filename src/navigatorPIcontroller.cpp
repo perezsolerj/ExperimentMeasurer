@@ -16,11 +16,13 @@
 #include <math.h>
 #include "../include/ExperimentMeasurer/navigatorPIcontroller.h"
 
+#define SAT				5
+#define num_sensors		2
+
 //DEBUG Flags
 #define DEBUG_FLAG_BOOL	1
 #define DEBUG_FLAG_DATA	0
 #define DEBUG_FLAG_BACK	0
-#define SAT				5
 
 using namespace std;
 
@@ -35,17 +37,19 @@ int main(int argc, char **argv)
 
 NavPiController::NavPiController()
 {
-	safetyAlarm			= false;
 	enableExecution		= false;
 	targetPosition		= false;
 	userControlRequest	= false;
+	
+	for (int i=0; i<=num_sensors; i++)
+		safetyAlarm.data.push_back(0);
 	
 	//Publishers initialization
 	pub_odom = nh.advertise<nav_msgs::Odometry>("dataNavigator", 1);
 	
 	//Subscribers initialization
 	sub_odomInfo = nh.subscribe<geometry_msgs::Pose>("g500/pose", 1, &NavPiController::odomCallback, this);
-	sub_safetyInfo = nh.subscribe<std_msgs::Bool>("safetyMeasures", 1, &NavPiController::safetyMeasuresCallback,this);
+	sub_safetyInfo = nh.subscribe<std_msgs::Int8MultiArray>("safetyMeasures", 1, &NavPiController::safetyMeasuresCallback,this);
 	sub_userControlInfo = nh.subscribe<std_msgs::Bool>("userControlRequest", 1, &NavPiController::userControlReqCallback, this);
 
 	//Services initialization
@@ -127,14 +131,19 @@ void NavPiController::odomCallback(const geometry_msgs::Pose::ConstPtr& odomValu
 	if (DEBUG_FLAG_BOOL)
 	{
 		cout << "currentRobotTargetDist = " << currentRobotTargetDist << endl;
+
 		if (enableExecution)
 			cout << "The robot is working. enableExecution = " << enableExecution << endl;
 		else
 			cout << "The robot has a problem. enableExecution = " << enableExecution << endl;
+
 		if (targetPosition)
 			cout << "The robot has achieved the target position. targetPosition = " << targetPosition << endl;
 		else
 			cout << "The robot has not achieved the target position. targetPosition = " << targetPosition << endl;
+
+		if (((int) safetyAlarm.data[0]) != 0)
+			cout << "Safety alarm!!! The user has the robot control." << endl;
 	}
 	if (DEBUG_FLAG_DATA)
 	{
@@ -158,7 +167,7 @@ void NavPiController::GoToPose()
 	
 	while ((enableExecution) and (!targetPosition))
 	{
-		if (!userControlRequest)
+		if ((!userControlRequest) )
 		{
 			//Compute control law
 			errorx = gain * (robotTargetPose.position.x);
@@ -212,16 +221,24 @@ void NavPiController::GoToPose()
 void NavPiController::userControlReqCallback(const std_msgs::Bool::ConstPtr& msg)
 {
 	userControlRequest = msg->data;
+
 	if (DEBUG_FLAG_BACK)
 		cout << "userControlRequestCallback: " << userControlRequest << endl;
 }
 
 
-void NavPiController::safetyMeasuresCallback(const std_msgs::Bool::ConstPtr& msg)
+void NavPiController::safetyMeasuresCallback(const std_msgs::Int8MultiArray::ConstPtr& msg)
 {
-	safetyAlarm = msg->data;
+	for (int i=0; i<=num_sensors; i++)
+		safetyAlarm.data[i] = msg->data[i];
+
 	if (DEBUG_FLAG_BACK)
-		cout << "safetyMeasuresCallback: " << safetyAlarm << endl;
+	{
+		cout << "safetyAlarm: [";
+		for (int i=0; i<=num_sensors; i++)
+			cout << safetyAlarm.data[i] << ",";
+		cout << "]" << endl;
+	}
 }
 
 
